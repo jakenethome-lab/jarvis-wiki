@@ -15,8 +15,10 @@ export default function AgentPage() {
 
   const agentName = agentNames[agentId] || agentId;
 
-  const [files, setFiles] = useState<{name: string, url: string, size: number, uploadedAt: string}[]>([]);
+  const [files, setFiles] = useState<{name: string, url: string, size: number, uploadedAt: string, type?: string}[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<{name: string, content: string} | null>(null);
+  const [loadingContent, setLoadingContent] = useState(false);
 
   useEffect(() => {
     fetchFiles();
@@ -31,6 +33,25 @@ export default function AgentPage() {
       }
     } catch (error) {
       console.error("Failed to fetch files:", error);
+    }
+  };
+
+  const viewContent = async (file: {name: string, url: string, type?: string}) => {
+    if (file.type === 'local' || file.name.endsWith('.md')) {
+      setLoadingContent(true);
+      try {
+        const response = await fetch(file.url);
+        if (response.ok) {
+          const content = await response.text();
+          setSelectedFile({ name: file.name, content });
+        }
+      } catch (error) {
+        console.error("Failed to fetch content:", error);
+      } finally {
+        setLoadingContent(false);
+      }
+    } else {
+      window.open(file.url, '_blank');
     }
   };
 
@@ -64,8 +85,8 @@ export default function AgentPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <div className="flex justify-between items-end mb-8 border-b pb-4">
+    <div className="max-w-5xl mx-auto px-4 md:px-0">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-end mb-8 border-b pb-4 gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">{agentName} 카테고리</h1>
           <p className="text-slate-500 mt-1">{agentName} 에이전트 전용 작업 공간입니다.</p>
@@ -80,35 +101,39 @@ export default function AgentPage() {
           />
           <label
             htmlFor="file-upload"
-            className={`cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors inline-block ${uploading ? 'opacity-50' : ''}`}
+            className={`cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors inline-block text-center w-full md:w-auto ${uploading ? 'opacity-50' : ''}`}
           >
             {uploading ? "업로드 중..." : "파일 업로드"}
           </label>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 gap-6">
+        {/* File List */}
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
           <table className="w-full text-left">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase">파일명</th>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase text-right">관리</th>
+                <th className="px-4 md:px-6 py-3 text-xs font-semibold text-slate-500 uppercase">파일명</th>
+                <th className="px-4 md:px-6 py-3 text-xs font-semibold text-slate-500 uppercase text-right">관리</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {files.map((file, idx) => (
                 <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4 font-medium">{file.name}</td>
-                  <td className="px-6 py-4 text-right">
-                    <a 
-                      href={file.url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
+                  <td className="px-4 md:px-6 py-4">
+                    <div className="flex flex-col">
+                      <span className="font-medium text-slate-900 break-all">{file.name}</span>
+                      <span className="text-xs text-slate-400">{new Date(file.uploadedAt).toLocaleDateString()}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 md:px-6 py-4 text-right">
+                    <button 
+                      onClick={() => viewContent(file)}
                       className="text-blue-600 hover:underline text-sm font-medium"
                     >
-                      다운로드
-                    </a>
+                      {file.type === 'local' || file.name.endsWith('.md') ? '보기' : '다운로드'}
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -120,6 +145,32 @@ export default function AgentPage() {
             </div>
           )}
         </div>
+
+        {/* Content Viewer */}
+        {selectedFile && (
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="bg-slate-50 px-6 py-3 border-b border-slate-200 flex justify-between items-center">
+              <h3 className="font-bold text-slate-700">{selectedFile.name}</h3>
+              <button 
+                onClick={() => setSelectedFile(null)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                닫기
+              </button>
+            </div>
+            <div className="p-6 prose max-w-none">
+              <pre className="whitespace-pre-wrap font-sans text-slate-800 leading-relaxed">
+                {selectedFile.content}
+              </pre>
+            </div>
+          </div>
+        )}
+
+        {loadingContent && (
+          <div className="text-center py-8 text-slate-500">
+            내용을 불러오는 중입니다...
+          </div>
+        )}
       </div>
     </div>
   );
