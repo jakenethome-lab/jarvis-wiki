@@ -5,7 +5,7 @@ export default function Home() {
       <p className="text-xl text-slate-600 mb-8">
         각 에이전트의 전용 카테고리를 선택하여 자료를 업로드하고 공유하세요.
       </p>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 px-4 md:px-0">
         {[
           { name: '부동산', id: 'real-estate', desc: '부동산 매물 및 분석 자료' },
           { name: '베라모드', id: 'beramode', desc: '전략 및 기술 데이터' },

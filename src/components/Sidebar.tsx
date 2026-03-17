@@ -8,7 +8,7 @@ const Sidebar = () => {
   ];
 
   return (
-    <div className="w-64 bg-slate-900 text-white h-screen p-4 flex flex-col border-r border-slate-800">
+    <div className="hidden md:flex w-64 bg-slate-900 text-white h-screen p-4 flex-col border-r border-slate-800">
       <div className="text-xl font-bold mb-8 flex items-center gap-2">
         <span>🦾</span> Jarvis Wiki
       </div>
