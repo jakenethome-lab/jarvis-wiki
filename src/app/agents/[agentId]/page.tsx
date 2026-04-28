@@ -10,7 +10,9 @@ export default function AgentPage() {
   const agentNames: Record<string, string> = {
     "real-estate": "부동산",
     "beramode": "베라모드",
-    "asura": "아수라"
+    "asura": "아수라",
+    "sigmund": "지그문트",
+    "hermes": "에르메스"
   };
 
   const agentName = agentNames[agentId] || agentId;

@@ -27,6 +27,8 @@ export async function GET(request: Request) {
       "real-estate": "realestate",
       "beramode": "veramode",
       "asura": "asura",
+      "sigmund": "sigmund",
+      "hermes": "hermes",
       "general": "general"
     };
 

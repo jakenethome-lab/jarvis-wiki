@@ -10,6 +10,8 @@ export default function Home() {
           { name: '부동산', id: 'real-estate', desc: '부동산 매물 및 분석 자료' },
           { name: '베라모드', id: 'beramode', desc: '전략 및 기술 데이터' },
           { name: '아수라', id: 'asura', desc: '심층 분석 및 특수 작업' },
+          { name: '지그문트', id: 'sigmund', desc: '지그문트 에이전트 작업 공간' },
+          { name: '에르메스', id: 'hermes', desc: '에르메스 기록 및 요약 자료' },
         ].map((agent) => (
           <a
             key={agent.id}
