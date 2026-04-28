@@ -3,6 +3,32 @@ import { kv } from "@vercel/kv";
 import fs from "fs";
 import path from "path";
 
+function getFilesRecursively(dir: string, baseDir: string, folderName: string): any[] {
+  const files: any[] = [];
+  if (!fs.existsSync(dir)) return files;
+
+  const items = fs.readdirSync(dir);
+  for (const item of items) {
+    const fullPath = path.join(dir, item);
+    const stats = fs.statSync(fullPath);
+
+    if (stats.isDirectory()) {
+      files.push(...getFilesRecursively(fullPath, baseDir, folderName));
+    } else if (item.endsWith('.md')) {
+      const relativePath = path.relative(baseDir, fullPath);
+      files.push({
+        name: item,
+        path: relativePath,
+        url: `/api/content?path=${folderName}/${relativePath}`,
+        size: stats.size,
+        uploadedAt: stats.mtime.toISOString(),
+        type: 'local'
+      });
+    }
+  }
+  return files;
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -19,7 +45,6 @@ export async function GET(request: Request) {
       parsedKvFiles = kvFiles.map((f: any) => typeof f === 'string' ? JSON.parse(f) : f);
     } catch (kvError) {
       console.error("KV fetch error:", kvError);
-      // KV 에러가 나더라도 로컬 파일은 보여줄 수 있도록 진행
     }
 
     // 2. 로컬(content 폴더) 파일 목록 가져오기
@@ -34,23 +59,8 @@ export async function GET(request: Request) {
 
     const folderName = idMapping[agentId] || agentId;
     const contentPath = path.join(process.cwd(), 'content', folderName);
-    const localFiles = [];
-
-    if (fs.existsSync(contentPath)) {
-      const filenames = fs.readdirSync(contentPath);
-      for (const filename of filenames) {
-        if (filename.endsWith('.md')) {
-          const stats = fs.statSync(path.join(contentPath, filename));
-          localFiles.push({
-            name: filename,
-            url: `/api/content?path=${folderName}/${filename}`,
-            size: stats.size,
-            uploadedAt: stats.mtime.toISOString(),
-            type: 'local'
-          });
-        }
-      }
-    }
+    
+    const localFiles = getFilesRecursively(contentPath, contentPath, folderName);
 
     // 3. 합치기 (최신순)
     const allFiles = [...localFiles, ...parsedKvFiles].sort((a, b) => 

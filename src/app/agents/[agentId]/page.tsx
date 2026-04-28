@@ -17,7 +17,7 @@ export default function AgentPage() {
 
   const agentName = agentNames[agentId] || agentId;
 
-  const [files, setFiles] = useState<{name: string, url: string, size: number, uploadedAt: string, type?: string}[]>([]);
+  const [files, setFiles] = useState<{name: string, path?: string, url: string, size: number, uploadedAt: string, type?: string}[]>([]);
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<{name: string, content: string} | null>(null);
   const [loadingContent, setLoadingContent] = useState(false);
@@ -86,6 +86,16 @@ export default function AgentPage() {
     }
   };
 
+  // Group files by date
+  const groupedFiles = files.reduce((acc, file) => {
+    const date = new Date(file.uploadedAt).toISOString().split('T')[0];
+    if (!acc[date]) acc[date] = [];
+    acc[date].push(file);
+    return acc;
+  }, {} as Record<string, typeof files>);
+
+  const sortedDates = Object.keys(groupedFiles).sort((a, b) => b.localeCompare(a));
+
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-0">
       <div className="flex flex-col md:flex-row md:justify-between md:items-end mb-8 border-b pb-4 gap-4">
@@ -110,67 +120,87 @@ export default function AgentPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6">
-        {/* File List */}
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-          <table className="w-full text-left">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="px-4 md:px-6 py-3 text-xs font-semibold text-slate-500 uppercase">파일명</th>
-                <th className="px-4 md:px-6 py-3 text-xs font-semibold text-slate-500 uppercase text-right">관리</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {files.map((file, idx) => (
-                <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-4 md:px-6 py-4">
-                    <div className="flex flex-col">
-                      <span className="font-medium text-slate-900 break-all">{file.name}</span>
-                      <span className="text-xs text-slate-400">{new Date(file.uploadedAt).toLocaleDateString()}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 md:px-6 py-4 text-right">
-                    <button 
-                      onClick={() => viewContent(file)}
-                      className="text-blue-600 hover:underline text-sm font-medium"
-                    >
-                      {file.type === 'local' || file.name.endsWith('.md') ? '보기' : '다운로드'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {files.length === 0 && !uploading && (
-            <div className="py-12 text-center text-slate-400">
-              업로드된 파일이 없습니다.
+      <div className="grid grid-cols-1 gap-8">
+        {sortedDates.length > 0 ? sortedDates.map(date => (
+          <div key={date} className="space-y-3">
+            <h2 className="text-lg font-bold text-slate-700 flex items-center gap-2">
+              <span className="w-2 h-6 bg-blue-500 rounded-full"></span>
+              {date}
+            </h2>
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+              <table className="w-full text-left">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th className="px-4 md:px-6 py-3 text-xs font-semibold text-slate-500 uppercase">파일명</th>
+                    <th className="px-4 md:px-6 py-3 text-xs font-semibold text-slate-500 uppercase text-right">관리</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {groupedFiles[date].map((file, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-4 md:px-6 py-4">
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            {file.path && file.path.includes('/') && (
+                              <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200 font-mono">
+                                {file.path.split('/')[0]}
+                              </span>
+                            )}
+                            <span className="font-medium text-slate-900 break-all">{file.name}</span>
+                          </div>
+                          <span className="text-xs text-slate-400">
+                            {new Date(file.uploadedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 md:px-6 py-4 text-right">
+                        <button 
+                          onClick={() => viewContent(file)}
+                          className="text-blue-600 hover:underline text-sm font-medium"
+                        >
+                          {file.type === 'local' || file.name.endsWith('.md') ? '보기' : '다운로드'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          )}
-        </div>
+          </div>
+        )) : !uploading && (
+          <div className="py-20 text-center text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl">
+            업로드된 파일이 없습니다.
+          </div>
+        )}
 
         {/* Content Viewer */}
         {selectedFile && (
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="bg-slate-50 px-6 py-3 border-b border-slate-200 flex justify-between items-center">
-              <h3 className="font-bold text-slate-700">{selectedFile.name}</h3>
-              <button 
-                onClick={() => setSelectedFile(null)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                닫기
-              </button>
-            </div>
-            <div className="p-6 prose max-w-none">
-              <pre className="whitespace-pre-wrap font-sans text-slate-800 leading-relaxed">
-                {selectedFile.content}
-              </pre>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" onClick={() => setSelectedFile(null)}>
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden w-full max-w-4xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+              <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+                <h3 className="font-bold text-slate-700 truncate mr-4">{selectedFile.name}</h3>
+                <button 
+                  onClick={() => setSelectedFile(null)}
+                  className="bg-white border border-slate-200 px-3 py-1 rounded-md text-sm font-medium text-slate-500 hover:bg-slate-100 transition-colors"
+                >
+                  닫기
+                </button>
+              </div>
+              <div className="p-8 overflow-y-auto">
+                <pre className="whitespace-pre-wrap font-sans text-slate-800 leading-relaxed text-base">
+                  {selectedFile.content}
+                </pre>
+              </div>
             </div>
           </div>
         )}
 
         {loadingContent && (
-          <div className="text-center py-8 text-slate-500">
-            내용을 불러오는 중입니다...
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-slate-500 font-medium">내용을 불러오는 중입니다...</p>
+            </div>
           </div>
         )}
       </div>
