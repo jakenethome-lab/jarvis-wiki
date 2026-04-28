@@ -8,6 +8,7 @@ export default function AgentPage() {
   const agentId = params.agentId as string;
   
   const agentNames: Record<string, string> = {
+    "jarvis": "자비스",
     "real-estate": "부동산",
     "beramode": "베라모드",
     "asura": "아수라",
@@ -21,6 +22,8 @@ export default function AgentPage() {
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<{name: string, content: string} | null>(null);
   const [loadingContent, setLoadingContent] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
 
   useEffect(() => {
     fetchFiles();
@@ -35,6 +38,26 @@ export default function AgentPage() {
       }
     } catch (error) {
       console.error("Failed to fetch files:", error);
+    }
+  };
+
+  const createFolder = async () => {
+    if (!newFolderName) return;
+    try {
+      const response = await fetch("/api/folder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentId, folderName: newFolderName }),
+      });
+      if (response.ok) {
+        setNewFolderName("");
+        setIsCreatingFolder(false);
+        fetchFiles();
+      } else {
+        alert("폴더 생성 실패");
+      }
+    } catch (error) {
+      alert("오류 발생");
     }
   };
 
@@ -59,34 +82,22 @@ export default function AgentPage() {
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
-    
     setUploading(true);
     const file = e.target.files[0];
-
     try {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("agentId", agentId);
-
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (response.ok) {
-        await fetchFiles();
-      } else {
-        alert("업로드 실패");
-      }
+      const response = await fetch("/api/upload", { method: "POST", body: formData });
+      if (response.ok) await fetchFiles();
+      else alert("업로드 실패");
     } catch (error) {
-      console.error("Upload error:", error);
       alert("업로드 중 오류 발생");
     } finally {
       setUploading(false);
     }
   };
 
-  // Group files by date
   const groupedFiles = files.reduce((acc, file) => {
     const date = new Date(file.uploadedAt).toISOString().split('T')[0];
     if (!acc[date]) acc[date] = [];
@@ -97,68 +108,89 @@ export default function AgentPage() {
   const sortedDates = Object.keys(groupedFiles).sort((a, b) => b.localeCompare(a));
 
   return (
-    <div className="max-w-5xl mx-auto px-4 md:px-0">
-      <div className="flex flex-col md:flex-row md:justify-between md:items-end mb-8 border-b pb-4 gap-4">
+    <div className="max-w-5xl mx-auto">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-10 gap-6">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">{agentName} 카테고리</h1>
-          <p className="text-slate-500 mt-1">{agentName} 에이전트 전용 작업 공간입니다.</p>
+          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">{agentName}</h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg">에이전트 전용 작업 아카이브</p>
         </div>
-        <div className="relative">
-          <input
-            type="file"
-            id="file-upload"
-            className="hidden"
-            onChange={handleUpload}
-            disabled={uploading}
-          />
-          <label
-            htmlFor="file-upload"
-            className={`cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors inline-block text-center w-full md:w-auto ${uploading ? 'opacity-50' : ''}`}
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setIsCreatingFolder(true)}
+            className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center gap-2 text-sm"
           >
-            {uploading ? "업로드 중..." : "파일 업로드"}
-          </label>
+            <span>📁</span> 폴더 생성
+          </button>
+          <div className="relative">
+            <input type="file" id="file-upload" className="hidden" onChange={handleUpload} disabled={uploading} />
+            <label
+              htmlFor="file-upload"
+              className={`cursor-pointer bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all inline-block text-center text-sm ${uploading ? 'opacity-50' : ''}`}
+            >
+              {uploading ? "업로드 중..." : "새 파일 업로드"}
+            </label>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-8">
+      {isCreatingFolder && (
+        <div className="mb-8 p-6 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/50 rounded-2xl flex flex-col md:flex-row gap-4 items-center">
+          <div className="flex-1 w-full">
+            <p className="text-sm font-bold text-blue-600 dark:text-blue-400 mb-2">새 폴더 이름 (예: YYYY-MM-DD)</p>
+            <input 
+              type="text" 
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              className="w-full bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800 rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+              placeholder="폴더명을 입력하세요..."
+            />
+          </div>
+          <div className="flex gap-2 w-full md:w-auto mt-4 md:mt-auto">
+            <button onClick={createFolder} className="flex-1 md:flex-none px-6 py-2 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors">생성</button>
+            <button onClick={() => setIsCreatingFolder(false)} className="flex-1 md:flex-none px-6 py-2 bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold rounded-xl hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors">취소</button>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-10">
         {sortedDates.length > 0 ? sortedDates.map(date => (
-          <div key={date} className="space-y-3">
-            <h2 className="text-lg font-bold text-slate-700 flex items-center gap-2">
-              <span className="w-2 h-6 bg-blue-500 rounded-full"></span>
+          <div key={date} className="group">
+            <h2 className="text-xl font-black text-slate-800 dark:text-slate-200 flex items-center gap-3 mb-4">
+              <span className="w-1.5 h-8 bg-blue-600 rounded-full group-hover:h-10 transition-all"></span>
               {date}
             </h2>
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-none transition-all">
               <table className="w-full text-left">
-                <thead className="bg-slate-50 border-b border-slate-200">
+                <thead className="bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-200 dark:border-slate-800">
                   <tr>
-                    <th className="px-4 md:px-6 py-3 text-xs font-semibold text-slate-500 uppercase">파일명</th>
-                    <th className="px-4 md:px-6 py-3 text-xs font-semibold text-slate-500 uppercase text-right">관리</th>
+                    <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">문서 정보</th>
+                    <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-right">액션</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {groupedFiles[date].map((file, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 md:px-6 py-4">
+                    <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group/row">
+                      <td className="px-6 py-5">
                         <div className="flex flex-col">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-3">
                             {file.path && file.path.includes('/') && (
-                              <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200 font-mono">
+                              <span className="text-[10px] font-black bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-1 rounded-lg border border-blue-200 dark:border-blue-800/50">
                                 {file.path.split('/')[0]}
                               </span>
                             )}
-                            <span className="font-medium text-slate-900 break-all">{file.name}</span>
+                            <span className="font-bold text-slate-900 dark:text-slate-100 text-lg group-hover/row:text-blue-600 transition-colors">{file.name}</span>
                           </div>
-                          <span className="text-xs text-slate-400">
-                            {new Date(file.uploadedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                          <span className="text-xs text-slate-400 mt-1 font-medium">
+                            {new Date(file.uploadedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} • {(file.size / 1024).toFixed(1)} KB
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 md:px-6 py-4 text-right">
+                      <td className="px-6 py-5 text-right">
                         <button 
                           onClick={() => viewContent(file)}
-                          className="text-blue-600 hover:underline text-sm font-medium"
+                          className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl text-sm font-bold hover:bg-blue-600 hover:text-white transition-all shadow-sm"
                         >
-                          {file.type === 'local' || file.name.endsWith('.md') ? '보기' : '다운로드'}
+                          {file.type === 'local' || file.name.endsWith('.md') ? '문서 보기' : '다운로드'}
                         </button>
                       </td>
                     </tr>
@@ -168,26 +200,30 @@ export default function AgentPage() {
             </div>
           </div>
         )) : !uploading && (
-          <div className="py-20 text-center text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl">
-            업로드된 파일이 없습니다.
+          <div className="py-32 text-center border-4 border-dashed border-slate-100 dark:border-slate-800 rounded-[40px]">
+            <span className="text-6xl mb-6 block">📂</span>
+            <p className="text-slate-400 dark:text-slate-600 font-bold text-xl">아직 업로드된 문서가 없습니다.</p>
           </div>
         )}
 
-        {/* Content Viewer */}
+        {/* Content Viewer Modal */}
         {selectedFile && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" onClick={() => setSelectedFile(null)}>
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden w-full max-w-4xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-              <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-                <h3 className="font-bold text-slate-700 truncate mr-4">{selectedFile.name}</h3>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 bg-slate-900/80 backdrop-blur-md" onClick={() => setSelectedFile(null)}>
+            <div className="bg-white dark:bg-slate-900 rounded-[32px] shadow-2xl overflow-hidden w-full max-w-5xl h-full max-h-[85vh] flex flex-col scale-in transition-all" onClick={e => e.stopPropagation()}>
+              <div className="bg-slate-50 dark:bg-slate-800/50 px-8 py-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                <div className="flex items-center gap-4 truncate">
+                  <span className="text-2xl">📄</span>
+                  <h3 className="font-black text-slate-800 dark:text-slate-100 text-xl truncate">{selectedFile.name}</h3>
+                </div>
                 <button 
                   onClick={() => setSelectedFile(null)}
-                  className="bg-white border border-slate-200 px-3 py-1 rounded-md text-sm font-medium text-slate-500 hover:bg-slate-100 transition-colors"
+                  className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-5 py-2 rounded-2xl text-sm font-black text-slate-500 hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-all active:scale-95"
                 >
                   닫기
                 </button>
               </div>
-              <div className="p-8 overflow-y-auto">
-                <pre className="whitespace-pre-wrap font-sans text-slate-800 leading-relaxed text-base">
+              <div className="p-10 overflow-y-auto custom-scrollbar">
+                <pre className="whitespace-pre-wrap font-sans text-slate-800 dark:text-slate-200 leading-relaxed text-lg">
                   {selectedFile.content}
                 </pre>
               </div>
@@ -196,10 +232,10 @@ export default function AgentPage() {
         )}
 
         {loadingContent && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-slate-500 font-medium">내용을 불러오는 중입니다...</p>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/20 backdrop-blur-sm">
+            <div className="bg-white dark:bg-slate-900 p-8 rounded-[32px] shadow-2xl text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent mx-auto mb-4"></div>
+              <p className="text-slate-900 dark:text-slate-100 font-black">문서를 해독 중입니다...</p>
             </div>
           </div>
         )}

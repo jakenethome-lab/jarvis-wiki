@@ -49,6 +49,7 @@ export async function GET(request: Request) {
 
     // 2. 로컬(content 폴더) 파일 목록 가져오기
     const idMapping: Record<string, string> = {
+      "jarvis": "jarvis",
       "real-estate": "realestate",
       "beramode": "veramode",
       "asura": "asura",
